@@ -51,6 +51,12 @@ in
 		};
 	};
 
+	# ssh-agent per login; the first ssh/git use asks for the key passphrase, later ones reuse it.
+	programs.ssh.startAgent = true;
+	programs.ssh.extraConfig = ''
+		AddKeysToAgent yes
+	'';
+
 	environment.systemPackages = with pkgs; [
 		vim
 		git

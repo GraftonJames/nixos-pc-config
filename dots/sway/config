@@ -8,6 +8,15 @@ set $right l
 set $term foot
 set $menu fuzzel --no-exit-on-keyboard-focus-loss 
 
+# Defaults that a host file (dots/sway/hosts/<hostname>.conf) can override with its own `set`
+set $bar_font_size 20
+set $bar_height 50
+set $lock_cmd swaylock -f -c 991111
+set $lock_after 3600
+set $screen_off_after 3660
+set $idle_sleep_after 7200
+set $idle_sleep_cmd systemctl hibernate
+
 include /etc/sway/config-vars.d/*
 
 ### Output configuration
@@ -18,10 +27,13 @@ input * {
     pointer_accel .75
 }
 
-output DP-3 pos 0 0 res 1080x1920 
-output eDP-1 pos 3840 0 res 1080x1920
-
 output * bg #991111 solid_color 
+
+# Per-machine settings: dots/sway/hosts/<hostname>.conf, linked by modules/desktop.nix.
+# Included here so it can override the variables above and set outputs/inputs;
+# it can also add its own bindsym and exec lines.
+include ~/.config/sway-host.conf
+
 ### Key bindings
 bindsym $mod+Return exec $term
 bindsym $mod+Escape kill
@@ -118,26 +130,40 @@ bindsym $mod+r mode "resize"
 bindsym XF86AudioRaiseVolume exec pactl set-sink-volume @DEFAULT_SINK@ +5%
 bindsym XF86AudioLowerVolume exec pactl set-sink-volume @DEFAULT_SINK@ -5%
 bindsym XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ toggle
+bindsym XF86MonBrightnessUp exec brightnessctl set 5%+
+bindsym XF86MonBrightnessDown exec brightnessctl set 5%-
 
 # Toggle pavucontrol as a floating overlay: close it if open, otherwise launch it
 bindsym $mod+p exec swaymsg '[app_id="(?i)pavucontrol"] kill' || pavucontrol
 for_window [app_id="(?i)pavucontrol"] floating enable, resize set width 60 ppt height 60 ppt, move position center
 bindsym $mod+g exec grim -g "$(slurp)" /home/james/screen_shot.png 
 
+# Lock, and hibernate (swayidle locks the screen first via before-sleep)
+bindsym $mod+Shift+z exec $lock_cmd
+bindsym $mod+Shift+x exec systemctl hibernate
+
 default_border pixel 1
 focus_follows_mouse yes
 mouse_warping container
 exec gammastep -l 51.8:0.15 -b 1.0:0.7 -t 6500:4000
+
+# Idle (defaults): lock after 1 hour, screen off a minute later, hibernate after 2 hours.
+# Also lock before any suspend/hibernate so the session never resumes unlocked.
+exec swayidle -w \
+    timeout $lock_after '$lock_cmd' \
+    timeout $screen_off_after 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
+    timeout $idle_sleep_after '$idle_sleep_cmd' \
+    before-sleep '$lock_cmd'
 
 exec systemctl --user import-environment WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP=sway
 
 bar {
     
-    font pango:DejaVu Sans Mono 20
+    font pango:DejaVu Sans Mono $bar_font_size
     status_command while /home/james/.config/sway/status.sh; do sleep 1; done
     position top
-    height 50
+    height $bar_height
 
 }
 include /etc/sway/config.d/*

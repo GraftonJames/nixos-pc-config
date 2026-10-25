@@ -1,21 +1,12 @@
 {
 	inputs.nixpkgs.url="github:NixOs/nixpkgs/nixos-25.05";
-	inputs.nixpkgs-unstable.url="github:NixOs/nixpkgs/nixos-unstable";
 	inputs.home-manager = {
 		url = "github:nix-community/home-manager/release-25.05";
 		inputs.nixpkgs.follows = "nixpkgs";
 	};
 
-	outputs = {nixpkgs, nixpkgs-unstable, home-manager, ...}:
+	outputs = {nixpkgs, home-manager, ...}:
 		let
-			system = "x86_64-linux";
-			# Where this repo is checked out on the machine.
-			repo = "/home/james/repos/nixos-pc-config";
-			pkgs-unstable = import nixpkgs-unstable {
-				inherit system;
-				config.allowUnfree=true;
-			};
-
 			# Modules every host gets.
 			commonModules = [
 				home-manager.nixosModules.home-manager
@@ -24,12 +15,20 @@
 				./modules/home.nix
 			];
 
-			mkHost = hostModule: nixpkgs.lib.nixosSystem {
-				inherit system;
-				specialArgs = {inherit pkgs-unstable repo; };
-				modules = commonModules ++ [ hostModule ];
-			};
+			# name: hostname, flake attribute and folder under hosts/.
+			# repo: where this repo is checked out on that machine.
+			mkHost = { name, repo ? "/home/james/nixos-config", system ? "x86_64-linux" }:
+				nixpkgs.lib.nixosSystem {
+					inherit system;
+					specialArgs = {inherit repo; };
+					modules = commonModules ++ [
+						(./hosts + "/${name}")
+						{ networking.hostName = name; }
+					];
+				};
 		in {
-			nixosConfigurations.x201s = mkHost ./hosts/x201s;
+			nixosConfigurations = {
+				x201s = mkHost { name = "x201s"; };
+			};
 		};
 }
