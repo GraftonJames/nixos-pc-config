@@ -19,9 +19,14 @@ flake.lock
 hosts/x201s/default.nix              # boot, hostname, networking, stateVersion
 hosts/x201s/hardware-configuration.nix
 modules/base.nix      # nix settings, locale, users
-modules/desktop.nix   # sway, audio, firefox
+modules/desktop.nix   # desktop environment: sway, audio, tools the sway config calls, ~/.config/sway link
+modules/apps.nix      # desktop applications: firefox, foot
 modules/shell.nix     # zsh, vim, git, CLI tools
+modules/home.nix      # Home Manager settings for user james
+dots/sway/            # sway config, linked to ~/.config/sway
 ```
+
+Dotfiles in `dots/` are linked with `mkOutOfStoreSymlink` to the repo checkout at `/home/james/repos/nixos-pc-config` (set as `repo` in `modules/desktop.nix`), so edits apply without a rebuild. The repo must live at that path on the laptop. Packages the dotfiles call must be added to the Nix config.
 
 Shared modules go in a `commonModules` list in `flake.nix`, with a `mkHost` helper so each host only lists what is unique to it. Machine-specific modules (for example `desktop.nix`) are imported by the host.
 
@@ -40,14 +45,14 @@ Shared modules go in a `commonModules` list in `flake.nix`, with a `mkHost` help
 
 - Shell: zsh (`programs.zsh.enable = true;`, user shell set to `pkgs.zsh`)
 - Editor: vim
-- Window manager: sway (`programs.sway`), config lives in `~/.config/sway/config` (user dotfile, not in this repo yet)
+- Window manager: sway (`programs.sway`), config is `dots/sway/config`, linked to `~/.config/sway` by Home Manager
 - Networking: NetworkManager
 - Rebuild command on the laptop: `sudo nixos-rebuild switch --flake .` (the hostname matches the flake attribute)
 
 ## Known issues and cleanup tasks
 
 1. Do not add `claude-code` (it crashes with illegal instruction on this CPU).
-2. Optional later: Home Manager (`github:nix-community/home-manager/release-25.05` with `inputs.nixpkgs.follows = "nixpkgs"`) for sway, zsh and vim dotfiles, and `nh` for nicer rebuild output.
+2. Optional later: move zsh and vim/neovim dotfiles into `dots/` via Home Manager, and `nh` for nicer rebuild output.
 3. Optional: `nix.gc` weekly with `--delete-older-than 14d`, since the laptop has limited disk.
 
 ## Workflow

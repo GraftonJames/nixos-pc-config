@@ -4,6 +4,7 @@
 	imports = [
 		./hardware-configuration.nix
 		../../modules/desktop.nix
+		../../modules/apps.nix
 	];
 
 	# Legacy BIOS: GRUB on the MBR.

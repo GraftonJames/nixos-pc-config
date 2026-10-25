@@ -1,8 +1,12 @@
 {
 	inputs.nixpkgs.url="github:NixOs/nixpkgs/nixos-25.05";
 	inputs.nixpkgs-unstable.url="github:NixOs/nixpkgs/nixos-unstable";
+	inputs.home-manager = {
+		url = "github:nix-community/home-manager/release-25.05";
+		inputs.nixpkgs.follows = "nixpkgs";
+	};
 
-	outputs = {nixpkgs, nixpkgs-unstable,...}:
+	outputs = {nixpkgs, nixpkgs-unstable, home-manager, ...}:
 		let
 			system = "x86_64-linux";
 			pkgs-unstable = import nixpkgs-unstable {
@@ -12,8 +16,10 @@
 
 			# Modules every host gets.
 			commonModules = [
+				home-manager.nixosModules.home-manager
 				./modules/base.nix
 				./modules/shell.nix
+				./modules/home.nix
 			];
 
 			mkHost = hostModule: nixpkgs.lib.nixosSystem {
