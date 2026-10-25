@@ -9,6 +9,8 @@
 	outputs = {nixpkgs, nixpkgs-unstable, home-manager, ...}:
 		let
 			system = "x86_64-linux";
+			# Where this repo is checked out on the machine.
+			repo = "/home/james/repos/nixos-pc-config";
 			pkgs-unstable = import nixpkgs-unstable {
 				inherit system;
 				config.allowUnfree=true;
@@ -24,7 +26,7 @@
 
 			mkHost = hostModule: nixpkgs.lib.nixosSystem {
 				inherit system;
-				specialArgs = {inherit pkgs-unstable; };
+				specialArgs = {inherit pkgs-unstable repo; };
 				modules = commonModules ++ [ hostModule ];
 			};
 		in {

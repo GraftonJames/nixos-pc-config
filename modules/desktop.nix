@@ -1,9 +1,5 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, repo, ... }:
 
-let
-	# Where this repo is checked out on the machine.
-	repo = "/home/james/repos/nixos-pc-config";
-in
 {
 	programs.sway = {
 		enable = true;
