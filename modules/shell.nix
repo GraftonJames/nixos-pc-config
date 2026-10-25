@@ -31,7 +31,8 @@ let
 				echo "Warning: uncommitted changes in $PWD will be included in this build."
 			fi
 
-			exec nh os switch "$@"
+			# Pass the flake explicitly so this doesn't rely on NH_FLAKE being set in the session.
+			exec nh os switch "${repo}" "$@"
 		'';
 	};
 in
