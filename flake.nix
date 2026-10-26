@@ -13,6 +13,7 @@
 				./modules/base.nix
 				./modules/shell.nix
 				./modules/home.nix
+				./modules/cloud.nix
 			];
 
 			# name: hostname, flake attribute and folder under hosts/.

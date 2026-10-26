@@ -19,8 +19,12 @@ hosts/<name>/hardware-configuration.nix # generated on that machine
 modules/base.nix      # all hosts: nix settings, store optimise, NetworkManager, en_GB locale, UK keyboard (XKB layout `gb`, also on console), user james
 modules/shell.nix     # all hosts: zsh, vim, git, nh + nh clean, `rebuild` script, ssh-agent, CLI tools
 modules/home.nix      # all hosts: Home Manager settings
+modules/cloud.nix     # all hosts: rclone remotes (pCloud, EU) mounted under ~/clouds/<name>
 modules/desktop.nix   # imported per host: greetd login, sway, audio, swayidle/swaylock, tools the sway config calls, dotfile links
 modules/apps.nix      # imported per host: desktop applications (firefox, foot)
+modules/gaming.nix    # imported per host: Steam, gamemode, gamescope (for the desktop, not the x201s)
+scripts/rebuild.sh    # the `rebuild` command, packaged in modules/shell.nix
+dots/vim/vimrc        # vim config, linked to ~/.vimrc by modules/shell.nix
 dots/sway/config      # shared sway config, linked to ~/.config/sway
 dots/sway/hosts/<name>.conf # per-host sway settings (monitors), linked to ~/.config/sway-host.conf
 ```
@@ -34,6 +38,7 @@ How the pieces fit:
 Where packages go:
 - `modules/desktop.nix`: the desktop environment itself and tools the sway config calls (launcher, screenshots, audio control, locking).
 - `modules/apps.nix`: standalone desktop applications the user picks (browser, terminal).
+- `modules/gaming.nix`: Steam and gaming tools. GPU drivers go in the host file.
 - `modules/shell.nix`: CLI tools.
 - `hosts/<name>/default.nix`: anything only one machine needs.
 
@@ -42,7 +47,7 @@ These are modules in one flake, not separate flakes.
 ## Adding a host
 
 1. Install NixOS on the machine and copy its `/etc/nixos/hardware-configuration.nix` into `hosts/<name>/`.
-2. Create `hosts/<name>/default.nix`: import `hardware-configuration.nix` and, for a desktop machine, `../../modules/desktop.nix` and `../../modules/apps.nix`. Set the boot loader and `system.stateVersion`/`home-manager.users.james.home.stateVersion` to the release it was installed with.
+2. Create `hosts/<name>/default.nix`: import `hardware-configuration.nix` and, for a desktop machine, `../../modules/desktop.nix` and `../../modules/apps.nix` (plus `../../modules/gaming.nix` for a gaming machine). Set the boot loader and `system.stateVersion`/`home-manager.users.james.home.stateVersion` to the release it was installed with.
 3. Add `<name> = mkHost { name = "<name>"; };` to `nixosConfigurations` in `flake.nix` (pass `repo` if it is not checked out at `~/nixos-config`).
 4. Add `dots/sway/hosts/<name>.conf` (it can be empty). Sway fails to load the include if it is missing.
 5. `git add` everything, build, and on the machine run `sudo nixos-rebuild switch --flake .#<name>` for the first switch.
@@ -63,7 +68,7 @@ These are modules in one flake, not separate flakes.
 
 - NixOS release: 25.05 (`nixpkgs` input is `nixos-25.05`). There is no unstable input. If one is needed for a single package, add it as a flake input and pass it through `specialArgs`.
 - Shell: zsh (`programs.zsh.enable = true;`, user shell set to `pkgs.zsh`)
-- Editor: vim. The user plans to set up neovim from scratch later, in `dots/nvim`. Don't import the old config from `~/repos/dotfiles/nvim`.
+- Editor: vim, config in `dots/vim/vimrc` (loads vim's defaults, keeps swap/backup/undo files in `~/.cache/vim/` so they stay out of `~/clouds`). The user plans to set up neovim from scratch later, in `dots/nvim`. Don't import the old config from `~/repos/dotfiles/nvim`.
 - Window manager: sway (`programs.sway`), config is `dots/sway/config`, linked to `~/.config/sway` by Home Manager. Reload with `$mod+Shift+c`.
 - Per-host sway: `dots/sway/hosts/<name>.conf` is linked to `~/.config/sway-host.conf` and included near the top of the main config, after the default variables. Host files override `$bar_font_size`, `$bar_height`, `$lock_cmd`, `$lock_after`, `$screen_off_after`, `$idle_sleep_after` and `$idle_sleep_cmd` with `set`, and hold outputs, inputs and host-only bindings/execs. When adding something that differs per machine to the main config, make it a variable with a default instead of hard-coding it.
 - Idle and hibernate: swayidle in the sway config locks with swaylock after 1 hour, turns the screen off a minute later, and hibernates after 2 hours. It also locks before any sleep. `$mod+Shift+z` locks, `$mod+Shift+x` hibernates.
@@ -75,9 +80,11 @@ These are modules in one flake, not separate flakes.
 - Home Manager: input `release-25.05`, following `nixpkgs`, used as a NixOS module (`modules/home.nix`) with `backupFileExtension = "bak"`
 - Garbage collection: `programs.nh.clean` runs weekly and keeps the last 3 generations plus anything from the past 14 days. Do not also enable `nix.gc.automatic`, because the two conflict.
 - No automatic upgrades. Updates are done by hand: `nix flake update` here (only when the user asks), build, then switch on each machine.
+- Git: `programs.git` in `modules/shell.nix` sets `user.name`/`user.email` in `/etc/gitconfig` (needed for `rebuild` commits). A `~/.gitconfig` on a machine overrides it.
+- Cloud storage: Home Manager `programs.rclone` in `modules/cloud.nix`. pCloud (EU, `eapi.pcloud.com`) is mounted at `~/clouds/pCloud` (2G local cache, folder listings refreshed after 30s) by the `rclone-mount:.@pcloud` user service. The token is not in the repo: each machine needs it in `~/.config/rclone-secrets/pcloud-token` (from `rclone authorize "pcloud"`), and the switch copies it into `~/.config/rclone/rclone.conf`. Without the file the switch still works but the mount fails. `rsync` is in `modules/shell.nix` for copies over SSH.
 - SSH: `programs.ssh.startAgent` plus `AddKeysToAgent yes`, so the key passphrase is asked once per login. On the Arch desktop, the same is done with the `ssh-agent.socket` user unit, `SSH_AUTH_SOCK` in `~/.bashrc` and `~/.config/environment.d/ssh-agent.conf`, and `AddKeysToAgent yes` in `~/.ssh/config`.
 - Networking: NetworkManager
-- Rebuild command: `rebuild` (defined in `modules/shell.nix`). It fetches from `origin`, pulls fast-forward only (stops if the branches have diverged), warns about uncommitted changes, then runs `nh os switch` on the repo, passing through any extra arguments. If the machine is offline, it builds the local copy. Plain `nh os switch` also works (run as the user, not with sudo). The fallback is `sudo nixos-rebuild switch --flake .` from the repo.
+- Rebuild command: `rebuild` (script in `scripts/rebuild.sh`, packaged in `modules/shell.nix`, which passes the repo path as `REPO`). It fetches from `origin`, pulls fast-forward only (stops if the branches have diverged), lists uncommitted changes, then runs `nh os switch` on the repo, passing through any extra arguments. If the switch succeeds, it commits changes to tracked files (`git add --update`, so `flake.lock` is included) plus anything already staged, with message `rebuild on <host>: <date>`, and pushes. It never adds untracked files (the repo may be public); it lists them instead, and they must be `git add`ed by hand. If the machine is offline, it builds the local copy and skips the push. Plain `nh os switch` also works (run as the user, not with sudo). The fallback is `sudo nixos-rebuild switch --flake .` from the repo.
 
 ## Host: x201s
 
@@ -105,5 +112,5 @@ These are modules in one flake, not separate flakes.
 
 1. Edit on the desktop, run `nixos-rebuild build --flake .#<host>` to check it evaluates (needs Nix installed here).
 2. Commit and push.
-3. On the machine: `rebuild` (pulls, then switches).
+3. On the machine: `rebuild` (pulls, switches, then commits and pushes anything changed there, such as `flake.lock`).
 4. If a rebuild breaks something, boot the previous generation from the boot menu.

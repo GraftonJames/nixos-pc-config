@@ -19,8 +19,12 @@
 					mounts."/" = {
 						enable = true;
 						mountPoint = "${config.home.homeDirectory}/clouds/pCloud";
-						# Keep the local file cache small (default is unlimited).
-						options.vfs-cache-max-size = "2G";
+						options = {
+							# Keep the local file cache small (default is unlimited).
+							vfs-cache-max-size = "2G";
+							# Re-list a folder after 30s instead of 5m, so changes from other machines show up sooner.
+							dir-cache-time = "30s";
+						};
 					};
 				};
 			};

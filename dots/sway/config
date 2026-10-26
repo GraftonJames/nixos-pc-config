@@ -24,10 +24,9 @@ output * bg #000000 solid_color
 
 input * {
     xkb_layout "gb"
+    xkb_options "eurosign:e,caps:escape"
     pointer_accel .75
 }
-
-output * bg #991111 solid_color 
 
 # Per-machine settings: dots/sway/hosts/<hostname>.conf, linked by modules/desktop.nix.
 # Included here so it can override the variables above and set outputs/inputs;

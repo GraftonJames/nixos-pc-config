@@ -28,19 +28,28 @@ else
 	fi
 fi
 
-if [ -n "$(git status --porcelain)" ]; then
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
 	echo "Uncommitted changes in $PWD will be included in this build:"
-	git status --short
+	git status --short --untracked-files=no
+fi
+
+# Untracked files are never committed automatically (the repo may be public), and
+# flakes can't see them, so they aren't part of the build either.
+untracked=$(git ls-files --others --exclude-standard)
+if [ -n "$untracked" ]; then
+	echo "Untracked files, not built or committed (git add them if they belong in the repo):"
+	echo "$untracked" | sed 's/^/  /'
 fi
 
 # Pass the flake explicitly so this doesn't rely on NH_FLAKE being set in the session.
 # set -e (from writeShellApplication) stops here if the build or switch fails.
 nh os switch "$REPO" "$@"
 
-# The switch worked: commit whatever it was built from, then push.
-if [ -n "$(git status --porcelain)" ]; then
-	git add --all
-	if ! git commit --quiet --message "rebuild on $(hostname): $(date '+%Y-%m-%d %H:%M')"; then
+# The switch worked: commit changes to tracked files (including flake.lock) and
+# anything already staged with git add, then push.
+git add --update
+if ! git diff --cached --quiet; then
+	if ! git commit --quiet --message "rebuild on $HOSTNAME: $(date '+%Y-%m-%d %H:%M')"; then
 		echo "Commit failed (is git user.name/user.email set?). Changes are staged but not committed."
 		exit 1
 	fi

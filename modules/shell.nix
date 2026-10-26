@@ -1,39 +1,12 @@
 { config, lib, pkgs, repo, ... }:
 
 let
-	# `rebuild`: pull new commits from the remote (fast-forward only), then `nh os switch`.
+	# `rebuild`: pull, `nh os switch`, then commit and push local changes. Script in scripts/rebuild.sh.
 	rebuild = pkgs.writeShellApplication {
 		name = "rebuild";
 		runtimeInputs = [ pkgs.git config.programs.nh.package ];
-		text = ''
-			cd "${repo}" || exit 1
-
-			if ! git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
-				echo "No upstream branch set, building the local copy."
-			elif ! git fetch --quiet; then
-				echo "Could not reach the remote (offline?), building the local copy."
-			else
-				behind=$(git rev-list --count 'HEAD..@{u}')
-				ahead=$(git rev-list --count '@{u}..HEAD')
-				if [ "$behind" -gt 0 ] && [ "$ahead" -gt 0 ]; then
-					echo "Local and remote have diverged ($ahead local, $behind remote commits). Sort it out with git first."
-					exit 1
-				elif [ "$behind" -gt 0 ]; then
-					echo "Pulling $behind new commit(s):"
-					git log --oneline 'HEAD..@{u}'
-					git pull --ff-only --quiet
-				else
-					echo "Already up to date with the remote."
-				fi
-			fi
-
-			if [ -n "$(git status --porcelain)" ]; then
-				echo "Warning: uncommitted changes in $PWD will be included in this build."
-			fi
-
-			# Pass the flake explicitly so this doesn't rely on NH_FLAKE being set in the session.
-			exec nh os switch "${repo}" "$@"
-		'';
+		runtimeEnv.REPO = repo;
+		text = builtins.readFile ../scripts/rebuild.sh;
 	};
 in
 {
@@ -51,6 +24,20 @@ in
 		};
 	};
 
+	# Git identity for commits made on the NixOS machines (e.g. by `rebuild`). Written to /etc/gitconfig.
+	programs.git = {
+		enable = true;
+		config.user = {
+			name = "James Grafton";
+			email = "jgrafton@posteo.net";
+		};
+	};
+
+	# Link ~/.vimrc straight to the repo, so edits apply without a rebuild.
+	home-manager.users.james = { config, ... }: {
+		home.file.".vimrc".source = config.lib.file.mkOutOfStoreSymlink "${repo}/dots/vim/vimrc";
+	};
+
 	# ssh-agent per login; the first ssh/git use asks for the key passphrase, later ones reuse it.
 	programs.ssh.startAgent = true;
 	programs.ssh.extraConfig = ''
@@ -59,8 +46,8 @@ in
 
 	environment.systemPackages = with pkgs; [
 		vim
-		git
 		nix-output-monitor
+		rsync
 		pciutils
 		rebuild
 	];
