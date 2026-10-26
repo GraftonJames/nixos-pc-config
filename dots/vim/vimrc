@@ -1,0 +1,14 @@
+" Linked to ~/.vimrc by modules/shell.nix. Edits apply the next time vim starts.
+
+" Having a ~/.vimrc stops vim loading its defaults (syntax highlighting, etc.), so load them here.
+unlet! skip_defaults_vim
+source $VIMRUNTIME/defaults.vim
+
+" Keep swap, backup and undo files out of the edited file's folder, so they
+" don't get uploaded from ~/clouds. The trailing // keeps names unique per path.
+for s:dir in ['swap', 'backup', 'undo']
+	call mkdir(expand('~/.cache/vim/' . s:dir), 'p', 0700)
+endfor
+set directory=~/.cache/vim/swap//
+set backupdir=~/.cache/vim/backup//
+set undodir=~/.cache/vim/undo//

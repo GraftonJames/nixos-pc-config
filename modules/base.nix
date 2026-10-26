@@ -10,7 +10,7 @@
 
 	time.timeZone = "Europe/London";
 	i18n.defaultLocale = "en_GB.UTF-8";
-	services.xserver.xkb.layout = "uk";
+	services.xserver.xkb.layout = "gb"; # XKB name for the UK layout
 	services.xserver.xkb.options = "eurosign:e,caps:escape";
 	# Use the same UK layout on the console and the tuigreet login screen.
 	console.useXkbConfig = true;

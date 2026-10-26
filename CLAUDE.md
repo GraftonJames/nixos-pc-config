@@ -16,7 +16,7 @@ flake.nix             # commonModules, mkHost helper, nixosConfigurations
 flake.lock            # one lock for all hosts
 hosts/<name>/default.nix                # host-only settings: boot loader, swap, power, stateVersions
 hosts/<name>/hardware-configuration.nix # generated on that machine
-modules/base.nix      # all hosts: nix settings, store optimise, NetworkManager, en_GB locale, UK keyboard (also on console), user james
+modules/base.nix      # all hosts: nix settings, store optimise, NetworkManager, en_GB locale, UK keyboard (XKB layout `gb`, also on console), user james
 modules/shell.nix     # all hosts: zsh, vim, git, nh + nh clean, `rebuild` script, ssh-agent, CLI tools
 modules/home.nix      # all hosts: Home Manager settings
 modules/desktop.nix   # imported per host: greetd login, sway, audio, swayidle/swaylock, tools the sway config calls, dotfile links
