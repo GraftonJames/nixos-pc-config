@@ -31,6 +31,6 @@
 
 	# Set both to the release the laptop was installed with (see /etc/nixos/configuration.nix),
 	# then never change them.
-	system.stateVersion = throw "x280: set system.stateVersion to the install release";
-	home-manager.users.james.home.stateVersion = throw "x280: set home.stateVersion to the install release";
+	system.stateVersion = "26.05"; # DO NOT CHANGE
+	home-manager.users.james.home.stateVersion = "25.05"; # DO NOT CHANGE
 }

@@ -4,6 +4,7 @@ let
 	# `rebuild`: pull, `nh os switch`, then commit and push local changes. Script in scripts/rebuild.sh.
 	rebuild = pkgs.writeShellApplication {
 		name = "rebuild";
+		excludeShellChecks = [ "SC2001"];
 		runtimeInputs = [ pkgs.git config.programs.nh.package ];
 		runtimeEnv.REPO = repo;
 		text = builtins.readFile ../scripts/rebuild.sh;
