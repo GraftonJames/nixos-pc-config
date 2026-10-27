@@ -18,7 +18,7 @@
 
 			# name: hostname, flake attribute and folder under hosts/.
 			# repo: where this repo is checked out on that machine.
-			mkHost = { name, repo ? "/home/james/nixos-pc-config", system ? "x86_64-linux" }:
+			mkHost = { name, repo ? "/home/james/nixos-config", system ? "x86_64-linux" }:
 				nixpkgs.lib.nixosSystem {
 					inherit system;
 					specialArgs = {inherit repo; };
