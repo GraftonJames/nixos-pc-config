@@ -4,7 +4,7 @@ NixOS flake config for several machines. Each machine is a host under `hosts/` a
 
 Machines:
 - `x201s`: ThinkPad X201s. The only NixOS host so far, used to stage and try out changes. Repo checked out at `~/nixos-config`.
-- Desktop: currently runs Arch. Claude Code runs here and edits this repo at `~/repos/nixos-pc-config`. The user plans to move it to NixOS.
+- `desktop`: AMD desktop (Ryzen, Radeon GPU), NixOS. Claude Code runs here and edits this repo at `~/nixos-config`.
 - Main laptop: used more often. The user plans to move it to NixOS. No details yet.
 
 Changes are made here, pushed, and pulled on each NixOS machine with `rebuild`.
@@ -23,9 +23,16 @@ modules/cloud.nix     # all hosts: rclone remotes (pCloud, EU) mounted under ~/c
 modules/desktop.nix   # imported per host: greetd login, sway, audio, swayidle/swaylock, tools the sway config calls, dotfile links
 modules/apps.nix      # imported per host: desktop applications (firefox, foot)
 modules/gaming.nix    # imported per host: Steam, gamemode, gamescope (for the desktop, not the x201s)
+modules/theme.nix     # imported by desktop.nix: the colour palette (moonfly), generates ~/.config/theme/* and ~/.config/swaylock/config
 scripts/rebuild.sh    # the `rebuild` command, packaged in modules/shell.nix
+scripts/check-updates.sh # the `check-updates` command, packaged in modules/desktop.nix
+dots/sway/status.sh   # sway bar status line, run once a second
 dots/vim/vimrc        # vim config, linked to ~/.vimrc by modules/shell.nix
+dots/nvim/            # neovim config, linked to ~/.config/nvim by modules/shell.nix
+dots/nvim/colors/theme.lua # neovim colorscheme (`:colorscheme theme`), palette from modules/theme.nix
 dots/sway/config      # shared sway config, linked to ~/.config/sway
+dots/foot/foot.ini    # foot config, linked to ~/.config/foot
+dots/fuzzel/fuzzel.ini # fuzzel config, linked to ~/.config/fuzzel
 dots/sway/hosts/<name>.conf # per-host sway settings (monitors), linked to ~/.config/sway-host.conf
 ```
 
@@ -68,13 +75,14 @@ These are modules in one flake, not separate flakes.
 
 - NixOS release: 25.05 (`nixpkgs` input is `nixos-25.05`). There is no unstable input. If one is needed for a single package, add it as a flake input and pass it through `specialArgs`.
 - Shell: zsh (`programs.zsh.enable = true;`, user shell set to `pkgs.zsh`)
-- Editor: vim, config in `dots/vim/vimrc` (loads vim's defaults, keeps swap/backup/undo files in `~/.cache/vim/` so they stay out of `~/clouds`). The user plans to set up neovim from scratch later, in `dots/nvim`. Don't import the old config from `~/repos/dotfiles/nvim`.
+- Editor: vim, config in `dots/vim/vimrc` (loads vim's defaults, keeps swap/backup/undo files in `~/.cache/vim/` so they stay out of `~/clouds`). Neovim (in `modules/shell.nix`, all hosts) is being set up from scratch in `dots/nvim`; so far it only sets colours. Don't import the old config from `~/repos/dotfiles/nvim`. No colorscheme plugin: the user chose a colorscheme generated from theme.nix over the moonfly plugin.
 - Window manager: sway (`programs.sway`), config is `dots/sway/config`, linked to `~/.config/sway` by Home Manager. Reload with `$mod+Shift+c`.
 - Per-host sway: `dots/sway/hosts/<name>.conf` is linked to `~/.config/sway-host.conf` and included near the top of the main config, after the default variables. Host files override `$bar_font_size`, `$bar_height`, `$lock_cmd`, `$lock_after`, `$screen_off_after`, `$idle_sleep_after` and `$idle_sleep_cmd` with `set`, and hold outputs, inputs and host-only bindings/execs. When adding something that differs per machine to the main config, make it a variable with a default instead of hard-coding it.
 - Idle and hibernate: swayidle in the sway config locks with swaylock after 1 hour, turns the screen off a minute later, and hibernates after 2 hours. It also locks before any sleep. `$mod+Shift+z` locks, `$mod+Shift+x` hibernates.
 - Login: greetd with tuigreet (text-mode, starts sway, remembers the last username in `/var/cache/tuigreet`). LightDM was not used because it needs an X server.
 - Terminal: foot (`$term` in the sway config)
 - Launcher: fuzzel (`$mod+i`)
+- Colours: `modules/theme.nix` is the only place colours are set (moonfly palette `c`, plus roles `bg`, `fg`, `fg_dim`, `surface`, `accent`, `urgent`, `good`, `warn`). It generates `~/.config/theme/{sway.conf,foot.ini,fuzzel.ini}`, which the dotfiles `include`, `~/.config/theme/nvim.lua` (a Lua table of every colour and role plus `ansi`, loaded by `dots/nvim/colors/theme.lua`), and the whole `~/.config/swaylock/config`. foot and Neovim use the `term_bg` role. Dotfiles never contain hex codes: sway uses `$bg`/`$accent`/... or `$c_<name>`, Neovim uses `p.<name>`. Changing a colour needs a rebuild. Build the text from lists, not tab-indented `''` strings (Nix doesn't strip tabs).
 - Audio: PipeWire with the PulseAudio shim, `pactl` for volume keys. `$mod+p` toggles pavucontrol as a centred floating window (a `for_window` rule in the sway config).
 - Brightness: `brightnessctl` on the brightness keys (user is in the `video` group)
 - Home Manager: input `release-25.05`, following `nixpkgs`, used as a NixOS module (`modules/home.nix`) with `backupFileExtension = "bak"`
@@ -85,6 +93,8 @@ These are modules in one flake, not separate flakes.
 - SSH: `programs.ssh.startAgent` plus `AddKeysToAgent yes`, so the key passphrase is asked once per login. On the Arch desktop, the same is done with the `ssh-agent.socket` user unit, `SSH_AUTH_SOCK` in `~/.bashrc` and `~/.config/environment.d/ssh-agent.conf`, and `AddKeysToAgent yes` in `~/.ssh/config`.
 - Networking: NetworkManager
 - Rebuild command: `rebuild` (script in `scripts/rebuild.sh`, packaged in `modules/shell.nix`, which passes the repo path as `REPO`). It fetches from `origin`, pulls fast-forward only (stops if the branches have diverged), lists uncommitted changes, then runs `nh os switch` on the repo, passing through any extra arguments. If the switch succeeds, it commits changes to tracked files (`git add --update`, so `flake.lock` is included) plus anything already staged, with message `rebuild on <host>: <date>`, and pushes. It never adds untracked files (the repo may be public); it lists them instead, and they must be `git add`ed by hand. If the machine is offline, it builds the local copy and skips the push. Plain `nh os switch` also works (run as the user, not with sudo). The fallback is `sudo nixos-rebuild switch --flake .` from the repo.
+- Status bar: `dots/sway/status.sh` prints pending package updates, a pCloud warning, time since the last switch, network, download speed (from `/proc/net/dev`), CPU % and temperature, RAM, free space on `/`, volume (`wpctl`), battery (only if there is one) and the clock. Each part is left out on machines that lack it. It runs every second, so keep it cheap: per-second parts use shell builtins (only `date` and `wpctl` are started); slower parts are cached in `$XDG_RUNTIME_DIR/sway-status-slow` and refreshed every 15 seconds.
+- Update check: `check-updates` copies the repo to a temp folder, runs `nix flake update` there (the real `flake.lock` is never touched), builds this host and counts version changes against `/run/current-system` with `nvd`. It writes `~/.cache/check-updates/status` (read by the status bar) and `~/.cache/check-updates/list`. A user timer runs it 15 minutes after login and every 6 hours on hosts that set `checkUpdates.enable = true;` (only `desktop`; too heavy for the x201s). On 25.05 nixpkgs itself no longer moves, so only the claude-code input changes anything.
 
 ## Host: x201s
 
@@ -98,15 +108,22 @@ These are modules in one flake, not separate flakes.
 - `system.stateVersion = "26.05"` while running 25.05: the machine was likely installed from 26.05 and moved back to 25.05 for the Wi-Fi kernel. Leave it.
 - Sway: `dots/sway/hosts/x201s.conf`. The built-in panel is 1280x800 (probably `LVDS-1`).
 
+## Host: desktop
+
+- AMD desktop, UEFI with systemd-boot. `boot.kernelPackages = pkgs.linuxPackages_latest` is fine here (the kernel rule is for the x201s).
+- Imports `gaming.nix` (Steam via `programs.steam`). Desktop-only packages in the host file: `claude-code` (from the `claude-code-nix` flake input overlay) and `discord`.
+- No swap, so `dots/sway/hosts/desktop.conf` sets `$idle_sleep_cmd systemctl suspend` instead of hibernate.
+- Monitors (`desktop.conf`): DP-1 1920x1080 turned portrait on the left (1080 wide in the layout), DP-2 2560x1440@144Hz on the right at `pos 1080 240`.
+- `checkUpdates.enable = true;`.
+- `system.stateVersion = "26.05"` (matches `/etc/nixos/configuration.nix`), `home.stateVersion = "25.05"`.
+
 ## Known issues and cleanup tasks
 
 1. NixOS 25.05 no longer gets security updates. A possible fix is moving to 26.05 and pinning the X201s to an older kernel series, which would mean relaxing the `boot.kernelPackages` rule. The user hasn't decided.
 2. Hibernation on the x201s is not wired up yet. It needs the disk swapfile declared in `swapDevices`, `boot.resumeDevice`, and `boot.kernelParams = [ "resume_offset=..." ]` (from `filefrag -v` on the swapfile). Waiting on the swapfile path, size, RAM size and offset from the laptop. Until then, `systemctl hibernate` fails and the machine just stays locked. zram cannot be used for hibernation.
-3. `flake.lock` has no Home Manager entry yet. The first build on a machine with Nix adds it; commit and push that lock change.
-4. `dots/sway/hosts/x201s.conf` holds commented-out `output DP-3`/`eDP-1` lines from another machine. Move them to that machine's host file when it's added.
-5. `dots/sway/status.sh` reads `/sys/class/power_supply/BAT0`, which a desktop does not have. Make it handle a missing battery before adding the desktop.
-6. `dots/sway/brightness` is an empty file left over from the old setup.
-7. Optional later: move zsh dotfiles into `dots/` via Home Manager.
+3. `dots/sway/hosts/x201s.conf` holds commented-out `output DP-3`/`eDP-1` lines from another machine. Move them to that machine's host file when it's added.
+4. `dots/sway/brightness` is an empty file left over from the old setup.
+5. Optional later: move zsh dotfiles into `dots/` via Home Manager.
 
 ## Workflow
 

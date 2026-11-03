@@ -4,12 +4,14 @@
 		url = "github:nix-community/home-manager/release-25.05";
 		inputs.nixpkgs.follows = "nixpkgs";
 	};
+	inputs.claude-code.url = "github:sadjow/claude-code-nix";
 
-	outputs = {nixpkgs, home-manager, ...}:
+	outputs = {nixpkgs, home-manager, claude-code, ...}:
 		let
 			# Modules every host gets.
 			commonModules = [
 				home-manager.nixosModules.home-manager
+				{ nixpkgs.overlays = [ claude-code.overlays.default ]; }
 				./modules/base.nix
 				./modules/shell.nix
 				./modules/home.nix
@@ -18,7 +20,7 @@
 
 			# name: hostname, flake attribute and folder under hosts/.
 			# repo: where this repo is checked out on that machine.
-			mkHost = { name, repo ? "/home/james/nixos-config", system ? "x86_64-linux" }:
+			mkHost = { name, repo ? "/home/james/nixos-config", system ? "x86_64-linux"}:
 				nixpkgs.lib.nixosSystem {
 					inherit system;
 					specialArgs = {inherit repo; };
@@ -31,6 +33,7 @@
 			nixosConfigurations = {
 				x201s = mkHost { name = "x201s"; };
 				x280 = mkHost { name = "x280"; };
+				desktop = mkHost { name = "desktop"; };
 			};
 		};
 }

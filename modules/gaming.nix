@@ -15,4 +15,8 @@
 
 	# Wrap a game in its own compositor: `gamescope -- %command%`.
 	programs.gamescope.enable = true;
+
+	environment.systemPackages = with pkgs; [
+		bolt-launcher # Jagex account launcher for OSRS (RuneLite) and RS3
+	];
 }

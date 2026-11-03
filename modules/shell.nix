@@ -34,9 +34,10 @@ in
 		};
 	};
 
-	# Link ~/.vimrc straight to the repo, so edits apply without a rebuild.
+	# Link ~/.vimrc and ~/.config/nvim straight to the repo, so edits apply without a rebuild.
 	home-manager.users.james = { config, ... }: {
 		home.file.".vimrc".source = config.lib.file.mkOutOfStoreSymlink "${repo}/dots/vim/vimrc";
+		xdg.configFile."nvim".source = config.lib.file.mkOutOfStoreSymlink "${repo}/dots/nvim";
 	};
 
 	# ssh-agent per login; the first ssh/git use asks for the key passphrase, later ones reuse it.
@@ -47,9 +48,11 @@ in
 
 	environment.systemPackages = with pkgs; [
 		vim
+		neovim # config in dots/nvim
 		nix-output-monitor
 		rsync
 		pciutils
+		usbutils
 		rebuild
 	];
 }
