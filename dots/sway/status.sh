@@ -12,31 +12,49 @@ cpu_prev="$runtime/sway-status-cpu"
 
 # One `date` for both the clock and the cache age: "<epoch> <weekday> <date> <time>".
 read -r now clock <<EOF
-$(date '+%s %a %F %H:%M:%S')
+$(date '+%s %a %d %b %H:%M:%S')
 EOF
 
 status=""
-# Appends one part to the line, with " | " between parts. Empty parts are skipped.
+# Appends one part to the line, with two spaces between parts. Empty parts are skipped.
 add() {
-	[ -n "$1" ] && status="${status:+$status | }$1"
+	[ -n "$1" ] && status="${status:+$status  }$1"
+}
+
+# Wraps text in a colour (pango_markup in the sway bar config). Plain text if the colour is unset.
+colour() {
+	if [ -n "$1" ]; then
+		printf '<span foreground="%s">%s</span>' "$1" "$2"
+	else
+		printf '%s' "$2"
+	fi
 }
 
 # --- Slow parts, refreshed every 15 seconds ---------------------------------------------------
 
 refresh_slow() {
+	# Highlight colours from the generated theme (modules/theme.nix), so no hex codes live here.
+	c_warn="" c_urgent=""
+	while read -r _ theme_name theme_value; do
+		case "$theme_name" in
+			'$warn') c_warn="$theme_value" ;;
+			'$urgent') c_urgent="$theme_value" ;;
+		esac
+	done 2>/dev/null <"$HOME/.config/theme/sway.conf"
+
 	# Package updates found by check-updates ("<count> <system path>"). Only shown while the
 	# running system is the one the count was worked out against, so it clears after a switch.
 	updates=""
 	if read -r count checked_system 2>/dev/null <"$HOME/.cache/check-updates/status" \
 		&& [ "$count" -gt 0 ] && [ "$checked_system" = "$(readlink /run/current-system)" ]; then
-		updates="$count new pkgs"
+		updates="pkgs $count"
 	fi
 
 	# pCloud mount (modules/cloud.nix): warn only when the folder exists but nothing is mounted
 	# there, e.g. the rclone-mount:.@pcloud service failed or the token file is missing.
 	pcloud=""
 	if [ -d "$HOME/clouds/pCloud" ] && ! mountpoint -q "$HOME/clouds/pCloud"; then
-		pcloud="pCloud ✗"
+		pcloud=$(colour "$c_urgent" "pCloud ✗")
 	fi
 
 	# Time since this machine last switched to a new NixOS generation (rebuild/nh os switch).
@@ -46,20 +64,23 @@ refresh_slow() {
 		# Minutes under an hour, hours under a day, then days.
 		age=$(( now - $(stat -c %Y /nix/var/nix/profiles/system) ))
 		if [ "$age" -lt 3600 ]; then
-			rebuilt="upd $((age / 60))m ago"
+			rebuilt="upd $((age / 60))m"
 		elif [ "$age" -lt 86400 ]; then
-			rebuilt="upd $((age / 3600))h ago"
+			rebuilt="upd $((age / 3600))h"
 		else
-			rebuilt="upd $((age / 86400))d ago"
+			rebuilt="upd $((age / 86400))d"
 		fi
+		# Highlight once it's been a week since the last switch.
+		[ "$age" -ge 604800 ] && rebuilt=$(colour "$c_warn" "$rebuilt")
 	fi
 
 	# Network from NetworkManager: the Wi-Fi name, "eth" for a wired connection, or "offline".
 	# nmcli -t prints TYPE:STATE:CONNECTION per device; take the first connected Wi-Fi or Ethernet.
 	network=$(nmcli -t -f TYPE,STATE,CONNECTION device status 2>/dev/null | awk -F: '
-		$2 == "connected" && $1 == "wifi"     { print "wifi " $3; exit }
-		$2 == "connected" && $1 == "ethernet" { print "eth"; exit }')
-	network="${network:-offline}"
+		$2 == "connected" && $1 == "wifi"     { print $3; exit }
+		$2 == "connected" && $1 == "ethernet" { print "eth"; exit }' \
+		| sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g') # A Wi-Fi name is free text: escape it for the markup.
+	network="${network:-$(colour "$c_urgent" offline)}"
 
 	# CPU temperature sensor: k10temp/zenpower (AMD) or coretemp (Intel), else the first
 	# thermal zone. Only the path is cached; the value is read every second.
@@ -73,15 +94,15 @@ refresh_slow() {
 	[ -r "$temp_file" ] || temp_file=/sys/class/thermal/thermal_zone0/temp
 
 	# Free space on / (where the Nix store lives).
-	disk="/ $(df -h --output=avail / | tail -1 | tr -d ' ') free"
+	disk="/ $(df -h --output=avail / | tail -1 | tr -d ' ')"
 
 	# One value per line, read back in the same order below.
-	printf '%s\n' "$now" "$updates" "$pcloud" "$rebuilt" "$network" "$temp_file" "$disk" >"$cache"
+	printf '%s\n' "$now" "$updates" "$pcloud" "$rebuilt" "$network" "$temp_file" "$disk" "$c_warn" "$c_urgent" >"$cache"
 }
 
 # Use the cache if it's under 15 seconds old, else refresh it.
 cached_at=0
-{ read -r cached_at; read -r updates; read -r pcloud; read -r rebuilt; read -r network; read -r temp_file; read -r disk; } \
+{ read -r cached_at; read -r updates; read -r pcloud; read -r rebuilt; read -r network; read -r temp_file; read -r disk; read -r c_warn; read -r c_urgent; } \
 	2>/dev/null <"$cache"
 if [ $(( now - ${cached_at:-0} )) -ge 15 ] || [ $(( now - ${cached_at:-0} )) -lt 0 ]; then
 	refresh_slow
@@ -120,11 +141,11 @@ if read -r prev_rx prev_cs 2>/dev/null <"$net_prev" \
 	rate=$(( (rx_total - prev_rx) * 100 / (uptime_cs - prev_cs) ))
 	if [ "$rate" -ge 1048576 ]; then
 		rate_tenths=$(( rate * 10 / 1048576 ))
-		add "↓ $((rate_tenths / 10)).$((rate_tenths % 10))M/s"
+		add "↓$((rate_tenths / 10)).$((rate_tenths % 10))M"
 	elif [ "$rate" -ge 1024 ]; then
-		add "↓ $((rate / 1024))K/s"
+		add "↓$((rate / 1024))K"
 	else
-		add "↓ ${rate}B/s"
+		add "↓${rate}B"
 	fi
 fi
 echo "$rx_total $uptime_cs" >"$net_prev"
@@ -141,15 +162,17 @@ if read -r prev_total prev_idle 2>/dev/null <"$cpu_prev" && [ "$cpu_total" -gt "
 fi
 echo "$cpu_total $cpu_idle" >"$cpu_prev"
 
-# CPU temperature, in millidegrees in the file.
+# CPU temperature, in millidegrees in the file. Highlighted from 90°.
 if [ -n "$temp_file" ] && read -r temp 2>/dev/null <"$temp_file"; then
-	add "CPU $cpu% $((temp / 1000))°C"
+	cpu_part="CPU $cpu% $((temp / 1000))°"
+	[ "$temp" -ge 90000 ] && cpu_part=$(colour "$c_urgent" "$cpu_part")
+	add "$cpu_part"
 else
 	add "CPU $cpu%"
 fi
 
 # RAM in use: total minus what the kernel says is available (free plus reclaimable cache).
-# /proc/meminfo is in KiB; shown as used/total GiB with one decimal for used.
+# /proc/meminfo is in KiB; shown as used GiB with one decimal.
 while read -r key value _; do
 	case "$key" in
 		MemTotal:) mem_total=$value ;;
@@ -157,7 +180,7 @@ while read -r key value _; do
 	esac
 done </proc/meminfo
 mem_used_tenths=$(( (mem_total - mem_avail) * 10 / 1048576 ))
-add "RAM $((mem_used_tenths / 10)).$((mem_used_tenths % 10))/$(( (mem_total + 524288) / 1048576 ))G"
+add "RAM $((mem_used_tenths / 10)).$((mem_used_tenths % 10))G"
 
 add "$disk"
 
@@ -196,11 +219,13 @@ for bat in /sys/class/power_supply/BAT*; do
 			fi
 			;;
 	esac
+	# Highlighted at 15% or less while running on battery.
+	[ "$bat_status" = Discharging ] && [ "$capacity" -le 15 ] && battery=$(colour "$c_urgent" "$battery")
 	add "$battery"
 	break
 done
 
-# The abbreviated weekday, ISO date and time, e.g. "Sat 2018-10-06 14:01:05".
+# The abbreviated weekday, date and time, e.g. "Sat 06 Oct 14:01:05".
 add "$clock"
 
 echo "$status"

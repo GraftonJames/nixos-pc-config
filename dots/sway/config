@@ -194,6 +194,8 @@ bar {
     
     # `monospace` is set in modules/theme.nix (fontconfig); never name a font here.
     font pango:monospace $bar_font_size
+    # status.sh colours the parts that need attention with <span> tags.
+    pango_markup enabled
     status_command while /home/james/.config/sway/status.sh; do sleep 1; done
     position top
     height $bar_height

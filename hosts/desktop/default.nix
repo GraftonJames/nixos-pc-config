@@ -23,10 +23,12 @@
 	# Keep the EFI partition from filling up with old kernels.
 	boot.loader.systemd-boot.configurationLimit = 10;
 
-	# 64 GiB disk swapfile (size is in MiB). It already exists; NixOS keeps it while the size matches.
 	swapDevices = [
 		{ device = "/.swapfile"; size = 64 * 1024; }
 	];
+
+	boot.resumeDevice = "/dev/disk/by-label/NIXROOT";
+	boot.kernelParams = [ "resume_offset=243924992" ];
 
 	boot.kernelPackages = pkgs.linuxPackages_latest;
 	# Firmware for the AMD GPU and other devices, plus CPU microcode updates.

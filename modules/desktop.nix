@@ -45,18 +45,18 @@ in
 			grim
 			slurp
 			gammastep
-			pulseaudio # for pactl
+			pulseaudio 
 			pavucontrol
 			brightnessctl
 			swayidle
 			swaylock
 			check-updates
-			mako # notifications (exec in the sway config)
-			libnotify # notify-send, used by dots/sway/screenshot.sh
-			wl-clipboard # wl-copy/wl-paste: screenshots to the clipboard, clipboard history
-			cliphist # clipboard history, $mod+c
-			jq # dots/sway/screenshot.sh reads swaymsg's JSON
-			playerctl # media keys
+			mako 
+			libnotify 
+			wl-clipboard 
+			cliphist 
+			jq 
+			playerctl 
 		];
 
 		# Lets swaylock check the user's password.
