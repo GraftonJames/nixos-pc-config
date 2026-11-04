@@ -61,16 +61,9 @@ refresh_slow() {
 	# The profile symlink is replaced on every switch; it doesn't exist on non-NixOS machines.
 	rebuilt=""
 	if [ -L /nix/var/nix/profiles/system ]; then
-		# Minutes under an hour, hours under a day, then days.
+		# Only shown after a day, in days. Highlighted once it's been a week.
 		age=$(( now - $(stat -c %Y /nix/var/nix/profiles/system) ))
-		if [ "$age" -lt 3600 ]; then
-			rebuilt="upd $((age / 60))m"
-		elif [ "$age" -lt 86400 ]; then
-			rebuilt="upd $((age / 3600))h"
-		else
-			rebuilt="upd $((age / 86400))d"
-		fi
-		# Highlight once it's been a week since the last switch.
+		[ "$age" -ge 86400 ] && rebuilt="upd $((age / 86400))d"
 		[ "$age" -ge 604800 ] && rebuilt=$(colour "$c_warn" "$rebuilt")
 	fi
 
