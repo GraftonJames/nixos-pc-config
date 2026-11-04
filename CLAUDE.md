@@ -23,13 +23,13 @@ modules/cloud.nix     # all hosts: rclone remotes (pCloud, EU) mounted under ~/c
 modules/desktop.nix   # imported per host: greetd login, sway, audio, swayidle/swaylock, tools the sway config calls, dotfile links
 modules/apps.nix      # imported per host: desktop applications (firefox, foot)
 modules/gaming.nix    # imported per host: Steam, gamemode, gamescope (for the desktop, not the x201s)
-modules/theme.nix     # imported by desktop.nix: the colour palette (moonfly), generates ~/.config/theme/* and ~/.config/swaylock/config
+modules/theme.nix     # imported by desktop.nix: fonts (Commit Mono) and the colour palette (moonfly), generates ~/.config/theme/* and ~/.config/swaylock/config
 scripts/rebuild.sh    # the `rebuild` command, packaged in modules/shell.nix
 scripts/check-updates.sh # the `check-updates` command, packaged in modules/desktop.nix
 dots/sway/status.sh   # sway bar status line, run once a second
 dots/vim/vimrc        # vim config, linked to ~/.vimrc by modules/shell.nix
 dots/nvim/            # neovim config, linked to ~/.config/nvim by modules/shell.nix
-dots/nvim/colors/theme.lua # neovim colorscheme (`:colorscheme theme`), palette from modules/theme.nix
+dots/nvim/colors/theme.lua # neovim colorscheme (`:colorscheme theme`), terminal colours 0-15 only
 dots/sway/config      # shared sway config, linked to ~/.config/sway
 dots/foot/foot.ini    # foot config, linked to ~/.config/foot
 dots/fuzzel/fuzzel.ini # fuzzel config, linked to ~/.config/fuzzel
@@ -57,32 +57,34 @@ These are modules in one flake, not separate flakes.
 2. Create `hosts/<name>/default.nix`: import `hardware-configuration.nix` and, for a desktop machine, `../../modules/desktop.nix` and `../../modules/apps.nix` (plus `../../modules/gaming.nix` for a gaming machine). Set the boot loader and `system.stateVersion`/`home-manager.users.james.home.stateVersion` to the release it was installed with.
 3. Add `<name> = mkHost { name = "<name>"; };` to `nixosConfigurations` in `flake.nix` (pass `repo` if it is not checked out at `~/nixos-config`).
 4. Add `dots/sway/hosts/<name>.conf` (it can be empty). Sway fails to load the include if it is missing.
-5. `git add` everything, build, and on the machine run `sudo nixos-rebuild switch --flake .#<name>` for the first switch.
+5. `git add` everything, then the user runs `sudo nixos-rebuild switch --flake .#<name>` for the first switch.
 
 ## Rules
 
-- Always `git add` new files before building. Flakes cannot see untracked files.
+- Always `git add` new files. Flakes cannot see untracked files.
 - Never change `system.stateVersion` or `home.stateVersion`. They are the original install release, not the current one.
-- Do not run `nixos-rebuild switch` from here. Validate with `nixos-rebuild build --flake .#<host>` or `nix flake check`, and let the user run `switch` on the machine.
+- Do not build or switch from here: no `nixos-rebuild build`/`switch`, `nix build` of a host or `nix flake check`. The user builds and switches with `rebuild`. Quick read-only checks are fine (`nix eval` of a package's metadata, an app's `--check-config`). After editing, show the diff and say it is unbuilt.
+- Do not `git commit` or push. The user commits (and `rebuild` commits on switch). `git add` of new files is still needed so the flake sees them.
 - Do not run `nix flake update` without asking. All hosts share one `flake.lock`, and a newer nixpkgs may move to a kernel that breaks the X201s Wi-Fi card. Reverting `flake.lock` with git undoes it.
 - Keep secrets (Wi-Fi passwords, tokens, password hashes) out of the repo. Everything here ends up readable in the Nix store.
 - Keep host-specific settings (hardware, monitors, power) in `hosts/<name>/` or `dots/sway/hosts/<name>.conf`, not in shared modules.
 - List items in Nix lists are separated by whitespace, not commas. Define `environment.systemPackages` once per file.
 - Quote the flake target in zsh: `'.#x201s'`.
-- Prefer small, reviewable commits. Show the diff and explain each change.
+- Keep changes small and reviewable. Show the diff and explain each change.
 
 ## Shared setup
 
 - NixOS release: 25.05 (`nixpkgs` input is `nixos-25.05`). There is no unstable input. If one is needed for a single package, add it as a flake input and pass it through `specialArgs`.
 - Shell: zsh (`programs.zsh.enable = true;`, user shell set to `pkgs.zsh`)
-- Editor: vim, config in `dots/vim/vimrc` (loads vim's defaults, keeps swap/backup/undo files in `~/.cache/vim/` so they stay out of `~/clouds`). Neovim (in `modules/shell.nix`, all hosts) is being set up from scratch in `dots/nvim`; so far it only sets colours. Don't import the old config from `~/repos/dotfiles/nvim`. No colorscheme plugin: the user chose a colorscheme generated from theme.nix over the moonfly plugin.
+- Editor: vim, config in `dots/vim/vimrc` (loads vim's defaults, keeps swap/backup/undo files in `~/.cache/vim/` so they stay out of `~/clouds`). Neovim (in `modules/shell.nix`, all hosts) is being set up from scratch in `dots/nvim`; so far it only sets colours. Don't import the old config from `~/repos/dotfiles/nvim`. No colorscheme plugin: the user chose a colorscheme built on the terminal's 16 colours (`termguicolors` off, `ctermfg`/`ctermbg` numbers only, no background) over the moonfly plugin and over a hex palette.
 - Window manager: sway (`programs.sway`), config is `dots/sway/config`, linked to `~/.config/sway` by Home Manager. Reload with `$mod+Shift+c`.
 - Per-host sway: `dots/sway/hosts/<name>.conf` is linked to `~/.config/sway-host.conf` and included near the top of the main config, after the default variables. Host files override `$bar_font_size`, `$bar_height`, `$lock_cmd`, `$lock_after`, `$screen_off_after`, `$idle_sleep_after` and `$idle_sleep_cmd` with `set`, and hold outputs, inputs and host-only bindings/execs. When adding something that differs per machine to the main config, make it a variable with a default instead of hard-coding it.
 - Idle and hibernate: swayidle in the sway config locks with swaylock after 1 hour, turns the screen off a minute later, and hibernates after 2 hours. It also locks before any sleep. `$mod+Shift+z` locks, `$mod+Shift+x` hibernates.
 - Login: greetd with tuigreet (text-mode, starts sway, remembers the last username in `/var/cache/tuigreet`). LightDM was not used because it needs an X server.
 - Terminal: foot (`$term` in the sway config)
 - Launcher: fuzzel (`$mod+i`)
-- Colours: `modules/theme.nix` is the only place colours are set (moonfly palette `c`, plus roles `bg`, `fg`, `fg_dim`, `surface`, `accent`, `urgent`, `good`, `warn`). It generates `~/.config/theme/{sway.conf,foot.ini,fuzzel.ini}`, which the dotfiles `include`, `~/.config/theme/nvim.lua` (a Lua table of every colour and role plus `ansi`, loaded by `dots/nvim/colors/theme.lua`), and the whole `~/.config/swaylock/config`. foot and Neovim use the `term_bg` role. Dotfiles never contain hex codes: sway uses `$bg`/`$accent`/... or `$c_<name>`, Neovim uses `p.<name>`. Changing a colour needs a rebuild. Build the text from lists, not tab-indented `''` strings (Nix doesn't strip tabs).
+- Fonts: `modules/theme.nix` sets fontconfig's `monospace` to Commit Mono (`pkgs.commit-mono`) with `nerd-fonts.symbols-only` as an icon fallback. Apps ask for `monospace` (foot, fuzzel, sway bar `pango:monospace`, sway title bars by default), never a font by name. Sizes stay in each app (bar size per host).
+- Colours: `modules/theme.nix` is the only place colours are set (moonfly palette `c`, plus roles `bg`, `fg`, `fg_dim`, `surface`, `accent`, `urgent`, `good`, `warn`). It generates `~/.config/theme/{sway.conf,foot.ini,fuzzel.ini}`, which the dotfiles `include`, and the whole `~/.config/swaylock/config`. foot uses the `term_bg` role. Neovim reads no palette: it uses foot's 16 colours (`ansi` in theme.nix) by number. Dotfiles never contain hex codes: sway uses `$bg`/`$accent`/... or `$c_<name>`. Changing a colour needs a rebuild. Build the text from lists, not tab-indented `''` strings (Nix doesn't strip tabs).
 - Audio: PipeWire with the PulseAudio shim, `pactl` for volume keys. `$mod+p` toggles pavucontrol as a centred floating window (a `for_window` rule in the sway config).
 - Brightness: `brightnessctl` on the brightness keys (user is in the `video` group)
 - Home Manager: input `release-25.05`, following `nixpkgs`, used as a NixOS module (`modules/home.nix`) with `backupFileExtension = "bak"`
@@ -127,7 +129,7 @@ These are modules in one flake, not separate flakes.
 
 ## Workflow
 
-1. Edit on the desktop, run `nixos-rebuild build --flake .#<host>` to check it evaluates (needs Nix installed here).
-2. Commit and push.
+1. Claude edits on the desktop (no builds, no commits) and shows the diff.
+2. The user builds, commits and pushes.
 3. On the machine: `rebuild` (pulls, switches, then commits and pushes anything changed there, such as `flake.lock`).
 4. If a rebuild breaks something, boot the previous generation from the boot menu.

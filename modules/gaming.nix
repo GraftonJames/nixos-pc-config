@@ -17,6 +17,7 @@
 	programs.gamescope.enable = true;
 
 	environment.systemPackages = with pkgs; [
-		bolt-launcher # Jagex account launcher for OSRS (RuneLite) and RS3
+		bolt-launcher 
+		lutris
 	];
 }

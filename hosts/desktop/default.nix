@@ -12,7 +12,6 @@
 	# pkgs.claude-code comes from the claude-code-nix overlay in flake.nix.
 	environment.systemPackages = with pkgs; [
 		claude-code
-		discord
 	];
 
 	# Show available package updates in the sway bar (modules/desktop.nix).

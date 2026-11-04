@@ -192,7 +192,8 @@ exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY SWAYSOCK XDG_C
 
 bar {
     
-    font pango:DejaVu Sans Mono $bar_font_size
+    # `monospace` is set in modules/theme.nix (fontconfig); never name a font here.
+    font pango:monospace $bar_font_size
     status_command while /home/james/.config/sway/status.sh; do sleep 1; done
     position top
     height $bar_height

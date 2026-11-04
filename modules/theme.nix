@@ -1,10 +1,15 @@
-{ lib, ... }:
+{ lib, pkgs, ... }:
 
-# The one place colours are set. Everything else reads these generated files:
+# The one place colours and fonts are set.
+#
+# Fonts: fontconfig's generic `monospace` means Commit Mono, with Nerd Font icons as a fallback
+# for glyphs it lacks. Apps ask for `monospace` (foot, fuzzel, the sway bar and title bars), never
+# a font by name, so changing the font here changes it everywhere. Sizes stay in each app.
+#
+# Colours: the one place they are set. Everything else reads these generated files:
 #   ~/.config/theme/sway.conf   included by dots/sway/config ($bg, $fg, $accent, ... and $c_<name>)
 #   ~/.config/theme/foot.ini    included by dots/foot/foot.ini
 #   ~/.config/theme/fuzzel.ini  included by dots/fuzzel/fuzzel.ini
-#   ~/.config/theme/nvim.lua    loaded by the Neovim colorscheme dots/nvim/colors/theme.lua
 #   ~/.config/swaylock/config   read by swaylock directly (it only holds colours)
 # Dotfiles never hold hex codes. Change a colour here, `rebuild`, then reload the app.
 let
@@ -60,7 +65,7 @@ let
 	# What each colour is for. Apps use these names, so a role can be repointed in one line.
 	role = {
 		bg = c.black;
-		term_bg = c.grey15; # foot: a bit lighter than moonfly's near-black. Darker: grey11, grey7; lighter: grey18, grey0
+		term_bg = c.black; # foot's background (Neovim shows it too). Lighter: grey7, grey11, grey15, grey18
 		fg = c.white;
 		fg_dim = c.grey50;
 		surface = c.grey0; # raised areas: inactive titles, the bar's other workspaces
@@ -70,7 +75,8 @@ let
 		warn = c.yellow;
 	};
 
-	# Terminal colours 0-15, in moonfly's order (extras/moonfly-kitty.conf).
+	# Terminal colours 0-15, in moonfly's order (extras/moonfly-kitty.conf). Neovim uses these by
+	# number (dots/nvim/colors/theme.lua), so changing one here recolours Neovim too.
 	ansi = with c; [ grey0 red green yellow blue violet turquoise white grey58 crimson emerald khaki sky purple lime grey89 ];
 
 	# `key=value` lines from [ [ key value ] ... ], in the order given.
@@ -80,16 +86,14 @@ let
 	swayVars = prefix: attrs: lib.concatLines (lib.mapAttrsToList (n: v: "set \$${prefix}${n} #${v}") attrs);
 in
 {
+	fonts.packages = [
+		pkgs.commit-mono
+		pkgs.nerd-fonts.symbols-only # icons only; used wherever the main font has no glyph
+	];
+	fonts.fontconfig.defaultFonts.monospace = [ "CommitMono" "Symbols Nerd Font Mono" ];
+
 	home-manager.users.james.xdg.configFile = {
 		"theme/sway.conf".text = swayVars "" role + swayVars "c_" c;
-
-		# Lua table of every colour and role ({ blue = "#80a0ff", bg = "#080808", ... }), used by
-		# the Neovim colorscheme dots/nvim/colors/theme.lua.
-		"theme/nvim.lua".text =
-			"return {\n"
-			+ lib.concatLines (lib.mapAttrsToList (n: v: "  ${n} = \"#${v}\",") (c // role))
-			+ "  ansi = { ${lib.concatMapStringsSep ", " (v: "\"#${v}\"") ansi} },\n"
-			+ "}\n";
 
 		"theme/foot.ini".text =
 			"[colors]\n"
