@@ -79,10 +79,11 @@ These are modules in one flake, not separate flakes.
 - Editor: vim, config in `dots/vim/vimrc` (loads vim's defaults, keeps swap/backup/undo files in `~/.cache/vim/` so they stay out of `~/clouds`). Neovim (in `modules/shell.nix`, all hosts) is being set up from scratch in `dots/nvim`; so far it only sets colours. Don't import the old config from `~/repos/dotfiles/nvim`. No colorscheme plugin: the user chose a colorscheme built on the terminal's 16 colours (`termguicolors` off, `ctermfg`/`ctermbg` numbers only, no background) over the moonfly plugin and over a hex palette.
 - Window manager: sway (`programs.sway`), config is `dots/sway/config`, linked to `~/.config/sway` by Home Manager. Reload with `$mod+Shift+c`.
 - Per-host sway: `dots/sway/hosts/<name>.conf` is linked to `~/.config/sway-host.conf` and included near the top of the main config, after the default variables. Host files override `$bar_font_size`, `$bar_height`, `$lock_cmd`, `$lock_after`, `$screen_off_after`, `$idle_sleep_after` and `$idle_sleep_cmd` with `set`, and hold outputs, inputs and host-only bindings/execs. When adding something that differs per machine to the main config, make it a variable with a default instead of hard-coding it.
+- Workspaces: `assign` rules in the main sway config keep apps on fixed workspaces on all hosts (Discord 2, Firefox 4, Lutris 5, Steam 8). Terminals are unassigned. `workspace N output X` lines, which pin workspaces to displays, go in the host file.
 - Idle and hibernate: swayidle in the sway config locks with swaylock after 1 hour, turns the screen off a minute later, and hibernates after 2 hours. It also locks before any sleep. `$mod+Shift+z` locks, `$mod+Shift+x` hibernates.
 - Login: greetd with tuigreet (text-mode, starts sway, remembers the last username in `/var/cache/tuigreet`). LightDM was not used because it needs an X server.
 - Terminal: foot (`$term` in the sway config)
-- Launcher: fuzzel (`$mod+i`)
+- Launcher: fuzzel (`$mod+i`). `$mod+o` runs `dots/sway/repos.sh`, which picks a folder in `~/repos` with fuzzel and opens it in neovim in a new foot window.
 - Fonts: `modules/theme.nix` sets fontconfig's `monospace` to Commit Mono (`pkgs.commit-mono`) with `nerd-fonts.symbols-only` as an icon fallback. Apps ask for `monospace` (foot, fuzzel, sway bar `pango:monospace`, sway title bars by default), never a font by name. Sizes stay in each app (bar size per host).
 - Colours: `modules/theme.nix` is the only place colours are set (moonfly palette `c`, plus roles `bg`, `fg`, `fg_dim`, `surface`, `accent`, `urgent`, `good`, `warn`). It generates `~/.config/theme/{sway.conf,foot.ini,fuzzel.ini}`, which the dotfiles `include`, and the whole `~/.config/swaylock/config`. foot uses the `term_bg` role. Neovim reads no palette: it uses foot's 16 colours (`ansi` in theme.nix) by number. Dotfiles never contain hex codes: sway uses `$bg`/`$accent`/... or `$c_<name>`. Changing a colour needs a rebuild. Build the text from lists, not tab-indented `''` strings (Nix doesn't strip tabs).
 - Audio: PipeWire with the PulseAudio shim, `pactl` for volume keys. `$mod+p` toggles pavucontrol as a centred floating window (a `for_window` rule in the sway config).
@@ -115,7 +116,7 @@ These are modules in one flake, not separate flakes.
 - AMD desktop, UEFI with systemd-boot. `boot.kernelPackages = pkgs.linuxPackages_latest` is fine here (the kernel rule is for the x201s).
 - Imports `gaming.nix` (Steam via `programs.steam`). Desktop-only packages in the host file: `claude-code` (from the `claude-code-nix` flake input overlay) and `discord`.
 - No swap, so `dots/sway/hosts/desktop.conf` sets `$idle_sleep_cmd systemctl suspend` instead of hibernate.
-- Monitors (`desktop.conf`): DP-1 1920x1080 turned portrait on the left (1080 wide in the layout), DP-2 2560x1440@144Hz on the right at `pos 1080 240`.
+- Monitors (`desktop.conf`): DP-1 1920x1080 turned portrait on the left (1080 wide in the layout), DP-2 2560x1440@144Hz on the right at `pos 1080 240`. Workspaces 1-3 are pinned to DP-1 and 4-10 to DP-2. Windows with a `steam_app_*` class are assigned to DP-2, because games should not open on the portrait screen.
 - `checkUpdates.enable = true;`.
 - `system.stateVersion = "26.05"` (matches `/etc/nixos/configuration.nix`), `home.stateVersion = "25.05"`.
 
@@ -126,6 +127,7 @@ These are modules in one flake, not separate flakes.
 3. `dots/sway/hosts/x201s.conf` holds commented-out `output DP-3`/`eDP-1` lines from another machine. Move them to that machine's host file when it's added.
 4. `dots/sway/brightness` is an empty file left over from the old setup.
 5. Optional later: move zsh dotfiles into `dots/` via Home Manager.
+6. Optional later: move the checkout to `~/repos/nixos-config` so it shows in the `$mod+o` picker. Order matters, because the dotfile links, `rebuild` and `NH_FLAKE` all use the path. First, on every machine and before any of them rebuilds: `mkdir -p ~/repos && mv ~/nixos-config ~/repos/nixos-config && ln -s ~/repos/nixos-config ~/nixos-config`. Then change the `repo` default in `flake.nix` and the paths in this file, `rebuild` on each machine, log out and back in, and `rm ~/nixos-config`. Claude Code's project memory is keyed to the folder path, so copy it across if it's still wanted.
 
 ## Workflow
 

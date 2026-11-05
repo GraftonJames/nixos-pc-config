@@ -42,6 +42,8 @@ include ~/.config/sway-host.conf
 bindsym $mod+Return exec $term
 bindsym $mod+Escape kill
 bindsym $mod+i exec $menu
+# Pick a project in ~/repos and open it in neovim.
+bindsym $mod+o exec ~/.config/sway/repos.sh
 bindsym $mod+Shift+c reload
 bindsym $mod+Shift+g exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
 #
@@ -83,6 +85,12 @@ bindsym $mod+Shift+7 move container to workspace number 7
 bindsym $mod+Shift+8 move container to workspace number 8
 bindsym $mod+Shift+9 move container to workspace number 9
 bindsym $mod+Shift+0 move container to workspace number 10
+# Apps that always open on the same workspace. Which display a workspace is on is per host.
+# Find an app's app_id/class with `swaymsg -t get_tree`.
+assign [app_id="^discord$"] workspace number 2
+assign [app_id="^firefox$"] workspace number 4
+assign [app_id="^net.lutris.Lutris$"] workspace number 5
+assign [class="^steam$"] workspace number 8
 # Layout stuff:
 #
 bindsym $mod+b splith
