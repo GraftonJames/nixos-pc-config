@@ -35,6 +35,9 @@
 	hardware.enableRedistributableFirmware = true;
 	hardware.usb-modeswitch.enable = true;
 
+	# Runs bluetoothd and adds bluetoothctl. PipeWire picks up Bluetooth audio devices by itself.
+	hardware.bluetooth.enable = true;
+
 	# The release this machine was installed with (matches /etc/nixos/configuration.nix);
 	# Home Manager's is 25.05 because that's the Home Manager release it started on. Never change them.
 	system.stateVersion = "26.05"; # DO NOT CHANGE
