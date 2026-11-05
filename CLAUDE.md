@@ -114,7 +114,7 @@ These are modules in one flake, not separate flakes.
 ## Host: desktop
 
 - AMD desktop, UEFI with systemd-boot. `boot.kernelPackages = pkgs.linuxPackages_latest` is fine here (the kernel rule is for the x201s).
-- Imports `gaming.nix` (Steam via `programs.steam`). Desktop-only packages in the host file: `claude-code` (from the `claude-code-nix` flake input overlay) and `discord`.
+- Imports `gaming.nix` (Steam via `programs.steam`, and WowUp-CF for WoW Forever addons, pinned there to a newer release because nixos-25.05's 2.20.0 can't see the `_forever_` client). Desktop-only packages in the host file: `claude-code` (from the `claude-code-nix` flake input overlay) and `discord`.
 - No swap, so `dots/sway/hosts/desktop.conf` sets `$idle_sleep_cmd systemctl suspend` instead of hibernate.
 - Monitors (`desktop.conf`): DP-1 1920x1080 turned portrait on the left (1080 wide in the layout), DP-2 2560x1440@144Hz on the right at `pos 1080 240`. Workspaces 1-3 are pinned to DP-1 and 4-10 to DP-2. Windows with a `steam_app_*` class are assigned to DP-2, because games should not open on the portrait screen.
 - `checkUpdates.enable = true;`.
