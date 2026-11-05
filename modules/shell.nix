@@ -53,6 +53,7 @@ in
 		rsync
 		pciutils
 		usbutils
+		claude-code
 		rebuild
 	];
 }
