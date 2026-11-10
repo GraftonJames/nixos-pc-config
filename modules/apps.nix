@@ -5,6 +5,7 @@
 		firefox
 		discord
 		stremio
+		calibre # e-book library and reader
 		foot # $term in dots/sway/config; CPU-rendered, no GPU needed
 	];
 }
