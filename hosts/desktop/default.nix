@@ -12,6 +12,7 @@
 	# pkgs.claude-code comes from the claude-code-nix overlay in flake.nix.
 	environment.systemPackages = with pkgs; [
 		claude-code
+		bluetuith # Bluetooth manager, $mod+Shift+b (dots/sway/hosts/desktop.conf)
 	];
 
 	# Show available package updates in the sway bar (modules/desktop.nix).

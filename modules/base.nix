@@ -18,7 +18,7 @@
 	users.users.james = {
 		isNormalUser = true;
 		description = "james";
-		extraGroups = [ "wheel" "video" ]; # video: backlight control with brightnessctl
+		extraGroups = [ "wheel" "video" "dialout" ]; # video: backlight control with brightnessctl; dialout: USB serial (flashing the e-reader)
 		shell = pkgs.zsh;
 		home = "/home/james";
 	};

@@ -25,7 +25,7 @@ set $idle_sleep_cmd systemctl hibernate
 include /etc/sway/config-vars.d/*
 
 ### Output configuration
-output * bg $bg solid_color
+output * bg $accent solid_color
 
 input * {
     xkb_layout "gb"
@@ -207,6 +207,7 @@ bar {
     status_command while /home/james/.config/sway/status.sh; do sleep 1; done
     position top
     height $bar_height
+
 
     colors {
         background $bg
