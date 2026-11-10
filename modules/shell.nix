@@ -55,5 +55,6 @@ in
 		usbutils
 		claude-code
 		rebuild
+		htop
 	];
 }
