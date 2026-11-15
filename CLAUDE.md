@@ -26,6 +26,7 @@ modules/gaming.nix    # imported per host: Steam, gamemode, gamescope (for the d
 modules/theme.nix     # imported by desktop.nix: fonts (Commit Mono) and the colour palette (moonfly), generates ~/.config/theme/* and ~/.config/swaylock/config
 scripts/rebuild.sh    # the `rebuild` command, packaged in modules/shell.nix
 scripts/check-updates.sh # the `check-updates` command, packaged in modules/desktop.nix
+scripts/sync-extra.sh # the `sync-extra` command (pCloud <-> EXTRA drive bisync), packaged in hosts/desktop/default.nix
 dots/sway/status.sh   # sway bar status line, run once a second
 dots/vim/vimrc        # vim config, linked to ~/.vimrc by modules/shell.nix
 dots/nvim/            # neovim config, linked to ~/.config/nvim by modules/shell.nix
@@ -119,6 +120,7 @@ These are modules in one flake, not separate flakes.
 - No swap, so `dots/sway/hosts/desktop.conf` sets `$idle_sleep_cmd systemctl suspend` instead of hibernate.
 - Monitors (`desktop.conf`): DP-1 1920x1080 turned portrait on the left (1080 wide in the layout), DP-2 2560x1440@144Hz on the right at `pos 1080 240`. Workspaces 1-3 are pinned to DP-1 and 4-10 to DP-2. Windows with a `steam_app_*` class are assigned to DP-2, because games should not open on the portrait screen.
 - `checkUpdates.enable = true;`.
+- EXTRA drive (`/mnt/extra`, ext4) holds a two-way copy of all of pCloud in `/mnt/extra/pCloud` (folder made by a tmpfiles rule, owned by james). `sync-extra` runs `rclone bisync` from a user timer 15 minutes after login and every 24 hours; the first run does `--resync` automatically. It skips the run if the drive is not mounted. Logs: `journalctl --user -u sync-extra`.
 - `system.stateVersion = "26.05"` (matches `/etc/nixos/configuration.nix`), `home.stateVersion = "25.05"`.
 
 ## Known issues and cleanup tasks

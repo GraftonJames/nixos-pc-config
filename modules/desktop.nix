@@ -39,6 +39,9 @@ in
 			pulse.enable = true;
 		};
 
+		# Mounts USB drives and SD cards on request, so Calibre can see e-readers and card readers.
+		services.udisks2.enable = true;
+
 		# Tools dots/sway/config calls
 		environment.systemPackages = with pkgs; [
 			fuzzel

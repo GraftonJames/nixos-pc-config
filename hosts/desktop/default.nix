@@ -1,5 +1,13 @@
 { config, lib, pkgs, ... }:
 
+let
+	# `sync-extra`: two-way sync of all of pCloud with the EXTRA drive (scripts/sync-extra.sh).
+	sync-extra = pkgs.writeShellApplication {
+		name = "sync-extra";
+		runtimeInputs = [ pkgs.rclone pkgs.util-linux ]; # util-linux for mountpoint
+		text = builtins.readFile ../../scripts/sync-extra.sh;
+	};
+in
 {
 	imports = [
 		./hardware-configuration.nix
@@ -13,7 +21,34 @@
 	environment.systemPackages = with pkgs; [
 		claude-code
 		bluetuith # Bluetooth manager, $mod+Shift+b (dots/sway/hosts/desktop.conf)
+		sync-extra
 	];
+
+	# The EXTRA drive (/mnt/extra, in hardware-configuration.nix) is owned by root; this gives
+	# james a folder on it for the pCloud copy. A subfolder, so bisync skips lost+found.
+	systemd.tmpfiles.rules = [ "d /mnt/extra/pCloud 0755 james users -" ];
+
+	# Run sync-extra 15 minutes after login (network is up by then), then every 24 hours.
+	# Logs: journalctl --user -u sync-extra
+	home-manager.users.james = {
+		systemd.user.services.sync-extra = {
+			Unit.Description = "Two-way sync of pCloud with /mnt/extra/pCloud";
+			Service = {
+				Type = "oneshot";
+				ExecStart = "${sync-extra}/bin/sync-extra";
+				Nice = 19;
+				IOSchedulingClass = "idle";
+			};
+		};
+		systemd.user.timers.sync-extra = {
+			Unit.Description = "Sync pCloud with the EXTRA drive daily";
+			Timer = {
+				OnStartupSec = "15min";
+				OnUnitActiveSec = "24h";
+			};
+			Install.WantedBy = [ "timers.target" ];
+		};
+	};
 
 	# Show available package updates in the sway bar (modules/desktop.nix).
 	checkUpdates.enable = true;
