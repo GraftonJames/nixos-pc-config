@@ -14,10 +14,10 @@ in
 	programs.zsh.enable = true;
 	programs.zsh.shellAliases = {
 		vim = "nvim";
-		ls = "eza --group-directories-first --icons=auto";
-		ll = "eza -l --git --group-directories-first --icons=auto";
-		la = "eza -la --git --group-directories-first --icons=auto";
-		lt = "eza --tree --level=2 --git-ignore --icons=auto";
+		ls = "eza --group-directories-first";
+		ll = "eza -l --git --group-directories-first";
+		la = "eza -la --git --group-directories-first";
+		lt = "eza --tree --level=2 --git-ignore";
 	};
 
 	# `z <part of a path>` jumps to the best match from visited folders; `zi` picks one with fzf.

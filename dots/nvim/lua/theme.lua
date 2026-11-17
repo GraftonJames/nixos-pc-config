@@ -1,4 +1,4 @@
--- Neovim colorscheme using only the terminal's 16 colours. Loaded by `:colorscheme theme`.
+-- Neovim colorscheme using only the terminal's 16 colours. Loaded by init.lua.
 -- Neovim sends colour numbers and the terminal decides what they look like, so in foot the
 -- colours come from modules/theme.nix; in another terminal they follow that terminal's palette.
 -- The background is never set: it is the terminal's own.
