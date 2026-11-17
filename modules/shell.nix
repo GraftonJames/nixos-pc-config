@@ -12,6 +12,16 @@ let
 in
 {
 	programs.zsh.enable = true;
+	programs.zsh.shellAliases = {
+		vim = "nvim";
+		ls = "eza --group-directories-first --icons=auto";
+		ll = "eza -l --git --group-directories-first --icons=auto";
+		la = "eza -la --git --group-directories-first --icons=auto";
+		lt = "eza --tree --level=2 --git-ignore --icons=auto";
+	};
+
+	# `z <part of a path>` jumps to the best match from visited folders; `zi` picks one with fzf.
+	programs.zoxide.enable = true;
 
 	# Rebuild with `nh os switch` from anywhere.
 	programs.nh = {
@@ -56,5 +66,7 @@ in
 		claude-code
 		rebuild
 		htop
+		eza
+		fzf
 	];
 }
