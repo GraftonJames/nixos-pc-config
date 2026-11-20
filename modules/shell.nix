@@ -68,5 +68,7 @@ in
 		htop
 		eza
 		fzf
+		zip
+		unzip
 	];
 }
